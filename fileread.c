@@ -1,52 +1,53 @@
+// fileread.c
 #include <stdio.h>
-#include <ctype.h>
+#include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "fileread.h"
 #include "wordtype.h"
 
-int read_words(char *input_file, int n, char *wtype, char words[][MAX_WORD_LENGTH], char *skip_words[], int num_skip_words) {
-    FILE *file = fopen(input_file, "r");
-    if (file == NULL) {
-        fprintf(stderr, "Error opening file: %s\n", input_file);
+int is_skipword(char *word, char **skipwords, int skipcount) {
+    for (int i = 0; i < skipcount; i++) {
+        if (strcmp(word, skipwords[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void normalize_word(char *word, const char *wtype) {
+    char temp[MAX_WORD_LEN];
+    int j = 0;
+
+    for (int i = 0; word[i] != '\0'; i++) {
+        if ((strcmp(wtype, "ALPHA") == 0 && isalpha(word[i])) ||
+            (strcmp(wtype, "ALPHANUM") == 0 && isalnum(word[i])) ||
+            (strcmp(wtype, "ALL") == 0 && !isspace(word[i]) && !ispunct(word[i]))) {
+            temp[j++] = word[i];
+        }
+    }
+    temp[j] = '\0';
+    strcpy(word, temp);
+}
+
+int read_words(const char *filename, char **words, int maxwords, const char *wtype, char **skipwords, int skipcount) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        perror("Error opening file");
         return -1;
     }
 
-    int num_words = 0;
-    char word[MAX_WORD_LENGTH];
-    int word_index = 0;
-    char c;
-
-    while ((c = fgetc(file)) != EOF && num_words < n) {
-        if (is_word_char(c, wtype)) {
-            if (word_index < MAX_WORD_LENGTH - 1) {
-                word[word_index++] = c;
-            }
-        } else if (word_index > 0) {
-            word[word_index] = '\0';
-            int skip = 0;
-            // Check if word should be skipped
-            for (int i = 0; i < num_skip_words; i++) {
-                if (strcmp(word, skip_words[i]) == 0) {
-                    skip = 1;
-                    break;
-                }
-            }
-            if (!skip) {
-                // Print the word
-                printf("Word: %s\n", word);
-                strcpy(words[num_words++], word);
-            }
-            word_index = 0;
+    char word[MAX_WORD_LEN];
+    int count = 0;
+    while (fscanf(file, "%s", word) != EOF && count < maxwords) {
+        normalize_word(word, wtype);
+        if (strlen(word) > 0 && !is_skipword(word, skipwords, skipcount) && is_valid_word(word, wtype)) {
+            words[count] = strdup(word);
+            count++;
         }
     }
 
     fclose(file);
-    return num_words;
-}
-
-void parse_skip_words(int argc, char *argv[], char *skip_words[], int *num_skip_words) {
-    for (int i = 5; i < argc; i++) {
-        skip_words[*num_skip_words++] = argv[i];
-    }
+    return count;
 }
 
