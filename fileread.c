@@ -6,6 +6,8 @@
 #include "fileread.h"
 #include "wordtype.h"
 
+#define MAX_WORD_LEN 100
+
 int is_skipword(char *word, char **skipwords, int skipcount) {
     for (int i = 0; i < skipcount; i++) {
         if (strcmp(word, skipwords[i]) == 0) {
@@ -22,7 +24,7 @@ void normalize_word(char *word, const char *wtype) {
     for (int i = 0; word[i] != '\0'; i++) {
         if ((strcmp(wtype, "ALPHA") == 0 && isalpha(word[i])) ||
             (strcmp(wtype, "ALPHANUM") == 0 && isalnum(word[i])) ||
-            (strcmp(wtype, "ALL") == 0 && !isspace(word[i]) && !ispunct(word[i]))) {
+            (strcmp(wtype, "ALL") == 0)) {
             temp[j++] = word[i];
         }
     }
@@ -50,4 +52,3 @@ int read_words(const char *filename, char **words, int maxwords, const char *wty
     fclose(file);
     return count;
 }
-
