@@ -1,44 +1,69 @@
+// ssort.c
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "fileread.h"
 #include "wordtype.h"
 #include "output.h"
 
+#define MAX_WORDS 1000
+
+void usage(const char *progname) {
+    fprintf(stderr, "Usage: %s <inputfile> <n> <wtype> <sorttype> [<skipword1> <skipword2> ...]\n", progname);
+    exit(1);
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 4) {
-        print_usage(argv[0]);
-        return 1;
+        usage(argv[0]);
     }
 
-    char *input_file = argv[1];
+    const char *inputfile = argv[1];
     int n = atoi(argv[2]);
-    char *wtype = argv[3];
-    char *sorttype = "ASC"; // Default sort type is ascending
-    char *skip_words[MAX_WORDS] = {0};
-    int num_skip_words = 0;
-
-    // Check if sort type is provided
-    if (argc >= 5) {
-        sorttype = argv[4];
+    if (n <= 0) {
+        fprintf(stderr, "Error: Invalid array size.\n");
+        exit(1);
     }
 
-    // Parse skip words
-    parse_skip_words(argc, argv, skip_words, &num_skip_words);
-
-    // Read words from file
-    char words[MAX_WORDS][MAX_WORD_LENGTH];
-    int num_words = read_words(input_file, n, wtype, words, skip_words, num_skip_words);
-    if (num_words == -1) {
-        fprintf(stderr, "Error reading words from file.\n");
-        return 2;
+    const char *wtype = argv[3];
+    if (strcmp(wtype, "ALPHA") != 0 && strcmp(wtype, "ALPHANUM") != 0 && strcmp(wtype, "ALL") != 0) {
+        fprintf(stderr, "Error: Invalid word type.\n");
+        exit(2);
     }
 
-    // Sort the array
-    sort_words(words, num_words, sorttype);
+    const char *sorttype = (argc > 4 && (strcmp(argv[4], "ASC") == 0 || strcmp(argv[4], "DESC") == 0)) ? argv[4] : "ASC";
 
-    // Print sorted array
-    print_sorted_words(words, num_words);
+    char *skipwords[MAX_WORDS];
+    int skipcount = 0;
+    for (int i = (strcmp(sorttype, "ASC") == 0 || strcmp(sorttype, "DESC") == 0) ? 5 : 4; i < argc; i++) {
+        skipwords[skipcount++] = argv[i];
+    }
+
+    char **words = malloc(n * sizeof(char *));
+    if (!words) {
+        fprintf(stderr, "Error: Memory allocation failed.\n");
+        exit(1);
+    }
+
+    int wordcount = read_words(inputfile, words, n, wtype, skipwords, skipcount);
+    if (wordcount < 0) {
+        fprintf(stderr, "Error: Failed to read words from file.\n");
+        free(words);
+        exit(1);
+    }
+
+    if (strcmp(sorttype, "DESC") == 0) {
+        qsort(words, wordcount, sizeof(char *), compare_desc);
+    } else {
+        qsort(words, wordcount, sizeof(char *), compare_asc);
+    }
+
+    print_words(words, wordcount);
+
+    for (int i = 0; i < wordcount; i++) {
+        free(words[i]);
+    }
+    free(words);
 
     return 0;
 }
-
